@@ -19,6 +19,12 @@ internal sealed class EntitySpawnedByClientProcessor(PlayerManager playerManager
     {
         Entity entity = packet.Entity;
 
+        // Ids can be reused (e.g. a creature turning into its cooked version) so the previous entity mustn't stay in its old cell
+        if (entityRegistry.TryGetEntityById(entity.Id, out WorldEntity previousWorldEntity) && ShouldStopTracking(previousWorldEntity, entity))
+        {
+            worldEntityManager.StopTrackingEntity(previousWorldEntity);
+        }
+
         // If the entity already exists in the registry, it is fine to update.  This is a normal case as the player
         // may have an item in their inventory (that the registry knows about) then wants to spawn it into the world.
         entityRegistry.AddOrUpdate(entity);
@@ -44,5 +50,17 @@ internal sealed class EntitySpawnedByClientProcessor(PlayerManager playerManager
                 await context.SendAsync(spawnEntities, player.SessionId);
             }
         }
+    }
+
+    private static bool ShouldStopTracking(WorldEntity previousWorldEntity, Entity newEntity)
+    {
+        if (previousWorldEntity is GlobalRootEntity)
+        {
+            // A global root entity is replaced in place when it's tracked again
+            return newEntity is not GlobalRootEntity;
+        }
+
+        // Entities with an invalid cell level could never be registered in a cell
+        return previousWorldEntity.Level is >= 0 and <= 3;
     }
 }
