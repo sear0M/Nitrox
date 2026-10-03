@@ -173,6 +173,7 @@ internal sealed partial class PlayerManager(SessionManager sessionManager, BanSe
 
         // reconnecting players need to have their cell visibility refreshed
         player.ClearVisibleCells();
+        player.OutOfCellVisibleEntities.Clear();
 
         reservations.Remove(sessionId);
 
@@ -219,6 +220,9 @@ internal sealed partial class PlayerManager(SessionManager sessionManager, BanSe
         }
         reservedPlayerNames.Remove(player.Name);
         player.IsOnline = false;
+        // The client disconnects before unloading its world, so it never tells us what it stopped seeing
+        player.ClearVisibleCells();
+        player.OutOfCellVisibleEntities.Clear();
         logger.ZLogInformation($"{player.Name} left the game");
         return Task.CompletedTask;
     }
