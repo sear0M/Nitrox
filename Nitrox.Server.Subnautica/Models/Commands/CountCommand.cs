@@ -36,7 +36,10 @@ internal sealed class CountCommand(EntityRegistry entityRegistry, SimulationOwne
                                                      .Take(MAX_LISTED_ENTITIES))
         {
             bool isLocked = simulationOwnershipData.TryGetLock(worldEntity.Id, out SimulationOwnershipData.PlayerLock playerLock);
-            builder.AppendLine($" └ {worldEntity.Id} at {worldEntity.Transform.Position}, {GetDistanceToClosestPlayer(worldEntity, players):0}m from the closest player, simulated by {(isLocked ? playerLock.Player.Name : "nobody")}");
+            NitroxVector3 position = worldEntity.Transform.Position;
+            // Rounded so that it can be copied as is into the teleport command
+            string teleportCommand = $"/tp {(int)Math.Round(position.X)} {(int)Math.Round(position.Y)} {(int)Math.Round(position.Z)}";
+            builder.AppendLine($" └ {worldEntity.Id}: {GetDistanceToClosestPlayer(worldEntity, players):0}m from the closest player, simulated by {(isLocked ? playerLock.Player.Name : "nobody")}, go there with: {teleportCommand}");
         }
 
         await context.ReplyAsync(builder.ToString());
