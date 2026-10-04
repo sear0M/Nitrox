@@ -35,6 +35,14 @@ public class PathBasedChildEntitySpawner : SyncEntitySpawner<PathBasedChildEntit
             return true;
         }
 
+        // Cyclops damage points get their id from CyclopsDamagePointEntitySpawner. Older saves still hold a path based entity for their
+        // WeldablePoint, which would replace that id and make players disagree on which entity to destroy when the point is repaired.
+        if (child.GetComponent<CyclopsDamagePoint>())
+        {
+            result.Set(Optional.Empty);
+            return true;
+        }
+
         GameObject gameObject = child.gameObject;
         NitroxEntity.SetNewId(gameObject, entity.Id);
 

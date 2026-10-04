@@ -47,6 +47,12 @@ public static class VehicleChildEntityHelper
             // generate PathBasedChildEntities for gameObjects under the main vehicle.
             foreach (MonoBehaviour mono in current.GetComponents<MonoBehaviour>())
             {
+                // Cyclops damage points get their own entity when they're created (see Cyclops.OnCreateDamagePoint)
+                if (mono is WeldablePoint && current.GetComponent<CyclopsDamagePoint>())
+                {
+                    continue;
+                }
+
                 // We don't to accidentally tag this game object unless we know it has an applicable mono
                 if (interactiveChildTypes.Contains(mono.GetType()))
                 {
