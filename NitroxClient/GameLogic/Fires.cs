@@ -164,6 +164,13 @@ namespace NitroxClient.GameLogic
                 return;
             }
 
+            // A late packet must not bring an extinguished fire back
+            if (fire.IsExtinguished())
+            {
+                Unregister(fireId);
+                return;
+            }
+
             // Prevents a desync where the fire could extinguish for one player but not another
             float douseAmount = fire.livemixin.health - health;
 
