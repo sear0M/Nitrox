@@ -49,6 +49,8 @@ public class CreatureHealthManager
     private NitroxId? readoutCreatureId;
     private float readoutEndTime;
     private float nextReadoutTime;
+    private LiveMixin pendingReadoutLiveMixin;
+    private float pendingReadoutHealth;
 
     /// <summary>
     ///     Above 0 while a local player's attack which gives no dealer to LiveMixin.TakeDamage runs (Prawn suit claw and drill, punching a bleeder).
@@ -190,6 +192,11 @@ public class CreatureHealthManager
         float now = Time.time;
         FlushOutgoingHits(now);
         RetryPendingHits(now);
+
+        if (pendingReadoutLiveMixin && now >= nextReadoutTime)
+        {
+            ShowReadout(readoutCreatureId, pendingReadoutLiveMixin, pendingReadoutHealth, true);
+        }
     }
 
     private HitSource GetHitSource(GameObject dealer)
@@ -435,11 +442,22 @@ public class CreatureHealthManager
     private void ShowReadout(NitroxId creatureId, LiveMixin liveMixin, float health, bool force)
     {
         float now = Time.time;
-        if (!ShowHealthReadout || readoutCreatureId != creatureId || now > readoutEndTime || (!force && now < nextReadoutTime))
+        if (!ShowHealthReadout || readoutCreatureId != creatureId || now > readoutEndTime)
         {
             return;
         }
 
+        // Keeps showing it while the creature's health changes, whoever hits it
+        readoutEndTime = now + READOUT_DURATION;
+        if (!force && now < nextReadoutTime)
+        {
+            // Shown by Update once the interval passed so that the latest value is always the one displayed
+            pendingReadoutLiveMixin = liveMixin;
+            pendingReadoutHealth = health;
+            return;
+        }
+
+        pendingReadoutLiveMixin = null;
         nextReadoutTime = now + READOUT_INTERVAL;
         string state = health <= 0f ? "dead" : simulationOwnership.HasAnyLockType(creatureId) ? "simulated by you" : "simulated by another player";
         Log.InGame($"{CraftData.GetTechType(liveMixin.gameObject)}: {Mathf.CeilToInt(health)}/{Mathf.CeilToInt(liveMixin.maxHealth)} HP ({state})");
