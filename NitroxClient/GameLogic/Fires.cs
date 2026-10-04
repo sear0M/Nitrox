@@ -37,10 +37,16 @@ namespace NitroxClient.GameLogic
         // How much other players are dousing fires
         private readonly Dictionary<NitroxId, Dictionary<SessionId, float>> remoteDouseRates = [];
 
-        public Fires(IPacketSender packetSender, LocalPlayer localPlayer)
+        // Lowest health our estimation of the other players' dousing can bring a fire to
+        private const float MIN_ESTIMATED_HEALTH = 1f;
+
+        public Fires(IPacketSender packetSender, LocalPlayer localPlayer, PlayerManager playerManager)
         {
             this.packetSender = packetSender;
             this.localPlayer = localPlayer;
+
+            // A player leaving while dousing won't send the packet telling that they stopped
+            playerManager.OnRemove += (sessionId, _) => RemoveRemoteDouseRates(sessionId);
         }
 
         /// <summary>
@@ -127,8 +133,9 @@ namespace NitroxClient.GameLogic
 
             if (remoteDouseRates.TryGetValue(fireId, out Dictionary<SessionId, float> rates))
             {
-                // Smoothly apply damage effect from other players
-                float douseAmount = rates.Values.Sum() * Time.deltaTime;
+                // Smoothly apply damage effect from other players. This estimation never puts the fire out by itself: only the dousing player knows
+                // when it's extinguished, otherwise the fire could disappear here while it keeps burning for the others.
+                float douseAmount = Mathf.Min(rates.Values.Sum() * Time.deltaTime, fire.livemixin.health - MIN_ESTIMATED_HEALTH);
                 if (douseAmount > 0f)
                 {
                     using (PacketSuppressor<FireDoused>.Suppress())
@@ -158,7 +165,7 @@ namespace NitroxClient.GameLogic
             }
 
             // Prevents a desync where the fire could extinguish for one player but not another
-            float douseAmount = Mathf.Max(fire.livemixin.health - health, 0.1f);
+            float douseAmount = fire.livemixin.health - health;
 
             if (douseAmount > 0f)
             {
@@ -167,16 +174,24 @@ namespace NitroxClient.GameLogic
                     fire.Douse(douseAmount);
                 }
             }
-            else
+            else if (douseAmount < 0f)
             {
-                // Fire health went up
+                // Fire health went up (it regrows, and our estimation of the other players' dousing can go too far)
                 fire.livemixin.health = health;
-                fire.Douse(0f);
+                using (PacketSuppressor<FireDoused>.Suppress())
+                {
+                    // Refreshes the fire's size and effects
+                    fire.Douse(0f);
+                }
             }
 
             if (health <= 0f)
             {
-                fire.Extinguished();
+                // Fire.Douse already calls it when the fire's health reaches 0
+                if (!fire.IsExtinguished())
+                {
+                    fire.Extinguished();
+                }
                 Unregister(fireId);
                 return;
             }
@@ -193,6 +208,14 @@ namespace NitroxClient.GameLogic
             remoteDouseRates.Remove(id);
             localDouseRates.Remove(id);
             currentlyDousing.Remove(id);
+        }
+
+        private void RemoveRemoteDouseRates(SessionId sessionId)
+        {
+            foreach (Dictionary<SessionId, float> rates in remoteDouseRates.Values)
+            {
+                rates.Remove(sessionId);
+            }
         }
     }
 }
