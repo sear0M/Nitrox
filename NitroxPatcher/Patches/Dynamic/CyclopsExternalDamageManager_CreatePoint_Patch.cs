@@ -18,7 +18,8 @@ public sealed partial class CyclopsExternalDamageManager_CreatePoint_Patch : Nit
         // Save the current damage state so we can find what changed in the postfix
         __state = [.. __instance.unusedDamagePoints];
 
-        return hasLock;
+        // The killing blow would create a point which Cyclops.OnCreateDamagePoint doesn't broadcast, leaving it without an id
+        return hasLock && __instance.subLiveMixin.IsAlive() && !__instance.subRoot.subDestroyed;
     }
 
     public static void Postfix(CyclopsExternalDamageManager __instance, List<CyclopsDamagePoint> __state, bool __runOriginal)
