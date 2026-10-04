@@ -24,6 +24,13 @@ public class CreatureHealthManager
     private const float HIT_BATCH_INTERVAL = 0.1f;
     private const float OUTGOING_HIT_IDLE_TIME = 5f;
     private const float FORWARDED_HIT_WAIT_TIME = 1f;
+    private const float READOUT_DURATION = 5f;
+    private const float READOUT_INTERVAL = 0.5f;
+
+    /// <summary>
+    ///     Test build helper: shows in the in-game log the health of the creature the local player last hit.
+    /// </summary>
+    public static bool ShowHealthReadout = true;
 
     private readonly IPacketSender packetSender;
     private readonly ThrottledPacketSender throttledPacketSender;
@@ -38,6 +45,10 @@ public class CreatureHealthManager
     ///     Creature currently taking a hit from <see cref="TryApplyForwardedHit" />.
     /// </summary>
     private LiveMixin remoteDamageTarget;
+
+    private NitroxId? readoutCreatureId;
+    private float readoutEndTime;
+    private float nextReadoutTime;
 
     /// <summary>
     ///     Above 0 while a local player's attack which gives no dealer to LiveMixin.TakeDamage runs (Prawn suit claw and drill, punching a bleeder).
@@ -73,6 +84,11 @@ public class CreatureHealthManager
         }
 
         HitSource source = GetHitSource(dealer);
+        if (source == HitSource.Local)
+        {
+            readoutCreatureId = creatureId;
+            readoutEndTime = Time.time + READOUT_DURATION;
+        }
 
         if (simulationOwnership.HasAnyLockType(creatureId))
         {
@@ -130,6 +146,8 @@ public class CreatureHealthManager
             return;
         }
 
+        ShowReadout(creatureId, liveMixin, liveMixin.health, !liveMixin.IsAlive());
+
         // Not the bare id: Entities.BroadcastMetadataUpdate throttles EntityMetadataUpdate with the id as key in the same sender
         object dedupeKey = (typeof(CreatureHealthChanged), creatureId);
         // Checked before the lock: CreatureDeath_OnKillAsync_Patch already released it during Kill
@@ -161,6 +179,7 @@ public class CreatureHealthManager
 
         // Written directly so that no damage receiver, effect or death runs. Never 0, otherwise RemoveCreatureCorpseProcessor would skip the death replay
         liveMixin.health = Mathf.Min(packet.Health, liveMixin.maxHealth);
+        ShowReadout(packet.CreatureId, liveMixin, liveMixin.health, false);
     }
 
     /// <summary>
@@ -411,6 +430,19 @@ public class CreatureHealthManager
             global::Utils.SpawnPrefabAt(liveMixin.damageEffect, liveMixin.transform, hitPosition);
             liveMixin.timeLastDamageEffect = Time.time;
         }
+    }
+
+    private void ShowReadout(NitroxId creatureId, LiveMixin liveMixin, float health, bool force)
+    {
+        float now = Time.time;
+        if (!ShowHealthReadout || readoutCreatureId != creatureId || now > readoutEndTime || (!force && now < nextReadoutTime))
+        {
+            return;
+        }
+
+        nextReadoutTime = now + READOUT_INTERVAL;
+        string state = health <= 0f ? "dead" : simulationOwnership.HasAnyLockType(creatureId) ? "simulated by you" : "simulated by another player";
+        Log.InGame($"{CraftData.GetTechType(liveMixin.gameObject)}: {Mathf.CeilToInt(health)}/{Mathf.CeilToInt(liveMixin.maxHealth)} HP ({state})");
     }
 
     private enum HitSource
