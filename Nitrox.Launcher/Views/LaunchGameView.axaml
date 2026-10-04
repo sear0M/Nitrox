@@ -57,7 +57,7 @@
                                                     <Setter Property="FontSize" Value="10" />
                                                 </Style>
                                             </StackPanel.Styles>
-                                            <TextBlock Foreground="{DynamicResource BrandSubText}" Text="PLAY NITROX CLAUDE VER" />
+                                            <TextBlock Foreground="{DynamicResource BrandSubText}" Text="PLAY NITROX CLAUDE VER 1.0" />
                                             <TextBlock Text="{Binding Version, FallbackValue='PHASE x.x.x.x'}" />
                                         </StackPanel>
                                         <controls:RecolorImage
