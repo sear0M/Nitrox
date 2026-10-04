@@ -470,7 +470,24 @@ public class CreatureHealthManager
 
         pendingReadoutLiveMixin = null;
         nextReadoutTime = now + READOUT_INTERVAL;
-        string state = health <= 0f ? "dead" : simulationOwnership.HasAnyLockType(creatureId) ? "simulated by you" : "simulated by another player";
+        string state;
+        if (health <= 0f)
+        {
+            state = "dead";
+        }
+        else if (simulationOwnership.HasAnyLockType(creatureId))
+        {
+            state = "simulated by you";
+        }
+        else if (liveMixin.GetComponent<RemotelyControlled>())
+        {
+            state = "simulated by another player";
+        }
+        else
+        {
+            // Same signal as ShouldApplyDamage: our health isn't the other players' one
+            state = "not synced, local health";
+        }
         Log.InGame($"{CraftData.GetTechType(liveMixin.gameObject)}: {Mathf.CeilToInt(health)}/{Mathf.CeilToInt(liveMixin.maxHealth)} HP ({state})");
     }
 
