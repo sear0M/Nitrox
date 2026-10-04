@@ -158,6 +158,8 @@ public class CyclopsMetadataProcessor : EntityMetadataProcessor<CyclopsMetadata>
         float healthPercent = health / liveMixin.maxHealth;
 
         liveMixinManager.SyncRemoteHealth(liveMixin, health);
+        // Only updated by SubRoot.OnTakeDamage, which doesn't run for remote health changes. It decides which hull warning plays on the next hit.
+        subRoot.oldHPPercent = liveMixin.GetHealthFraction();
 
         if (healthPercent < 0.5f && oldHealthPercent >= 0.5f)
         {
