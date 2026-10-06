@@ -40,9 +40,11 @@ public class EntityPositionBroadcaster : MonoBehaviour
 
             if (watchingEntityIds.Count > 0)
             {
+                // Attached lava larvae don't swim but move with what they're attached to, and the server must keep up with their position
                 Dictionary<NitroxId, GameObject> nonSplineEntitiesById = NitroxEntity.GetObjectsFrom(watchingEntityIds)
-                                                                                     .Where(item => !item.Value.GetComponent<SwimBehaviour>() && 
-                                                                                                    !item.Value.GetComponent<WalkBehaviour>())
+                                                                                     .Where(item => (!item.Value.GetComponent<SwimBehaviour>() &&
+                                                                                                     !item.Value.GetComponent<WalkBehaviour>()) ||
+                                                                                                    LavaLarvas.IsAttached(item.Value))
                                                                                      .ToDictionary(item => item.Key, item => item.Value);
                 
                 List<EntityTransformUpdate> updates = BuildUpdates(nonSplineEntitiesById);
