@@ -31,12 +31,6 @@ internal sealed class EntityTransformUpdatesProcessor(SimulationOwnership simula
 
             RemotelyControlled remotelyControlled = RemotelyControlled.Ensure(gameObject);
 
-            // An attached lava larva moves with what it's attached to (see LavaLarvas)
-            if (LavaLarvas.IsAttached(gameObject))
-            {
-                continue;
-            }
-
             Vector3 position = update.Position.ToUnity();
             Quaternion rotation = update.Rotation.ToUnity();
 
